@@ -7,7 +7,7 @@
 
 #include <stdio.h>
 #include <unistd.h>
-#include <sys/timerfd.h>
+
 
 using namespace muduo;
 using namespace muduo::net;
@@ -52,15 +52,15 @@ class PeriodicTimer
 
   void start()
   {
-    struct itimerspec spec;
-    memZero(&spec, sizeof spec);
-    spec.it_interval = toTimeSpec(interval_);
-    spec.it_value = spec.it_interval;
-    int ret = ::timerfd_settime(timerfd_, 0 /* relative timer */, &spec, NULL);
-    if (ret)
-    {
-      LOG_SYSERR << "timerfd_settime()";
-    }
+//    struct itimerspec spec;
+//    memZero(&spec, sizeof spec);
+//    spec.it_interval = toTimeSpec(interval_);
+//    spec.it_value = spec.it_interval;
+//    int ret = ::timerfd_settime(timerfd_, 0 /* relative timer */, &spec, NULL);
+//    if (ret)
+//    {
+//      LOG_SYSERR << "timerfd_settime()";
+//    }
   }
 
   ~PeriodicTimer()

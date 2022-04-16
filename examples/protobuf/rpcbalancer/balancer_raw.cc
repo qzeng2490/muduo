@@ -10,6 +10,7 @@
 //#include <muduo/net/protorpc/rpc.pb.h>
 
 #include <stdio.h>
+#include <machine/endian.h>
 #include <unistd.h>
 
 using namespace muduo;
@@ -97,10 +98,11 @@ class BackendSession : noncopyable
     if (conn_)
     {
       uint64_t id = ++nextId_;
-      Request r = { msg.id(), clientConn };
+//      Request r = { msg.id(), clientConn };
+      Request r = { 1, clientConn };
       assert(outstandings_.find(id) == outstandings_.end());
       outstandings_[id] = r;
-      msg.set_id(id);
+//      msg.set_id(id);
       sendTo(conn_, msg);
       // LOG_DEBUG << "forward " << r.origId << " from " << clientConn->name()
       //           << " as " << id << " to " << conn_->name();
@@ -165,7 +167,8 @@ class BackendSession : noncopyable
   void onMessageT(MSG& msg)
   {
     loop_->assertInLoopThread();
-    std::map<uint64_t, Request>::iterator it = outstandings_.find(msg.id());
+    std::map<uint64_t, Request>::iterator it = outstandings_.find(1);
+//    std::map<uint64_t, Request>::iterator it = outstandings_.find(msg.id);
     if (it != outstandings_.end())
     {
       uint64_t origId = it->second.origId;
@@ -176,7 +179,7 @@ class BackendSession : noncopyable
       {
         // LOG_DEBUG << "send back " << origId << " of " << clientConn->name()
         //           << " using " << msg.id() << " from " << conn_->name();
-        msg.set_id(origId);
+//        msg.set_id(origId);
         sendTo(clientConn, msg);
       }
     }
@@ -352,6 +355,6 @@ int main(int argc, char* argv[])
     balancer.start();
     loop.loop();
   }
-  google::protobuf::ShutdownProtobufLibrary();
+//  google::protobuf::ShutdownProtobufLibrary();
 }
 

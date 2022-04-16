@@ -13,13 +13,15 @@ option(MUDUO_BUILD_EXAMPLES "Build Muduo examples" ON)
 set(CXX_FLAGS
  -g
  # -DVALGRIND
- -DCHECK_PTHREAD_RETURN_VALUE
+# -DCHECK_PTHREAD_RETURN_VALUE
+ -DMUDUO_STD_STRING
  -D_FILE_OFFSET_BITS=64
  -Wall
  -Wextra
- -Werror
+# -Werror
  -Wconversion
  -Wno-unused-parameter
+ -Wno-sign-conversion
  -Wold-style-cast
  -Woverloaded-virtual
  -Wpointer-arith
@@ -28,7 +30,6 @@ set(CXX_FLAGS
  -march=native
  # -MMD
  -std=c++17
- -rdynamic
  )
 if(CMAKE_BUILD_BITS EQUAL 32)
   list(APPEND CXX_FLAGS "-m32")
@@ -46,6 +47,10 @@ set(CMAKE_CXX_FLAGS_DEBUG "-O0")
 set(CMAKE_CXX_FLAGS_RELEASE "-O2 -DNDEBUG")
 set(EXECUTABLE_OUTPUT_PATH ${PROJECT_BINARY_DIR}/bin)
 set(LIBRARY_OUTPUT_PATH ${PROJECT_BINARY_DIR}/lib)
+
+#set (BOOST_ROOT /usr/local/Cellar/boost/1.78.0_1)
+#set (BOOST_INCLUDEDIR ${BOOST_ROOT}/include)
+#set (BOOST_LIBRARYDIR ${BOOST_ROOT}/lib)
 
 find_package(Boost)
 find_package(Protobuf)
@@ -94,6 +99,8 @@ if(THRIFT_COMPILER AND THRIFT_INCLUDE_DIR AND THRIFT_LIBRARY)
 endif()
 
 if(Boost_FOUND)
+  message(STATUS "Boost_INCLUDE_DIRS = ${Boost_INCLUDE_DIRS}")
+
   include_directories(${Boost_INCLUDE_DIRS})
 endif()
 
@@ -106,6 +113,7 @@ add_subdirectory(muduo/base)
 add_subdirectory(muduo/net)
 
 if(MUDUO_BUILD_EXAMPLES)
+  message(STATUS "MUDUO_BUILD_EXAMPLES ")
   add_subdirectory(contrib)
   add_subdirectory(examples)
 else()
