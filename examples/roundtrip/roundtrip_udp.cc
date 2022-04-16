@@ -15,8 +15,9 @@ const size_t frameLen = 2*sizeof(int64_t);
 
 int createNonblockingUDP()
 {
-  int sockfd = ::socket(AF_INET, SOCK_DGRAM | SOCK_NONBLOCK | SOCK_CLOEXEC, IPPROTO_UDP);
-  if (sockfd < 0)
+    int sockfd = ::socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+    sockets::setNonBlockAndCloseOnExec(sockfd);
+    if (sockfd < 0)
   {
     LOG_SYSFATAL << "::socket";
   }

@@ -14,7 +14,7 @@
 
 #include <assert.h>
 //#define _BSD_SOURCE
-#include <endian.h>
+#include <muduo/net/Endian.h>
 
 #include <stdint.h>
 #include <stdio.h>
@@ -290,7 +290,7 @@ struct tm TimeZone::toLocalTime(time_t seconds) const
     ::gmtime_r(&localSeconds, &localTime); // FIXME: fromUtcTime
     localTime.tm_isdst = local->isDst;
     localTime.tm_gmtoff = local->gmtOffset;
-    localTime.tm_zone = &data.abbreviation[local->arrbIdx];
+      localTime.tm_zone = const_cast<char*>(&data.abbreviation[local->arrbIdx]);
   }
 
   return localTime;

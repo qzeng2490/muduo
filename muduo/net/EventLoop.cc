@@ -18,7 +18,8 @@
 #include <algorithm>
 
 #include <signal.h>
-#include <sys/eventfd.h>
+#include <sys/types.h>
+#include <sys/socket.h>
 #include <unistd.h>
 
 using namespace muduo;
@@ -30,16 +31,6 @@ __thread EventLoop* t_loopInThisThread = 0;
 
 const int kPollTimeMs = 10000;
 
-int createEventfd()
-{
-  int evtfd = ::eventfd(0, EFD_NONBLOCK | EFD_CLOEXEC);
-  if (evtfd < 0)
-  {
-    LOG_SYSERR << "Failed in eventfd";
-    abort();
-  }
-  return evtfd;
-}
 
 #pragma GCC diagnostic ignored "-Wold-style-cast"
 class IgnoreSigPipe
@@ -51,7 +42,6 @@ class IgnoreSigPipe
     // LOG_TRACE << "Ignore SIGPIPE";
   }
 };
-#pragma GCC diagnostic error "-Wold-style-cast"
 
 IgnoreSigPipe initObj;
 }  // namespace
@@ -70,11 +60,14 @@ EventLoop::EventLoop()
     threadId_(CurrentThread::tid()),
     poller_(Poller::newDefaultPoller(this)),
     timerQueue_(new TimerQueue(this)),
-    wakeupFd_(createEventfd()),
-    wakeupChannel_(new Channel(this, wakeupFd_)),
     currentActiveChannel_(NULL)
 {
   LOG_DEBUG << "EventLoop created " << this << " in thread " << threadId_;
+  if (::socketpair(AF_UNIX, SOCK_STREAM, 0, wakeupFd_) < 0)
+  {
+    LOG_SYSFATAL << "Failed in socketpair";
+  }
+  wakeupChannel_.reset(new Channel(this, wakeupFd_[0]));
   if (t_loopInThisThread)
   {
     LOG_FATAL << "Another EventLoop " << t_loopInThisThread

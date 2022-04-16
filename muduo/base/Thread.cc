@@ -13,10 +13,9 @@
 #include <errno.h>
 #include <stdio.h>
 #include <unistd.h>
-#include <sys/prctl.h>
 #include <sys/syscall.h>
 #include <sys/types.h>
-#include <linux/unistd.h>
+
 
 namespace muduo
 {
@@ -25,7 +24,7 @@ namespace detail
 
 pid_t gettid()
 {
-  return static_cast<pid_t>(::syscall(SYS_gettid));
+    return pthread_mach_thread_np(pthread_self());
 }
 
 void afterFork()

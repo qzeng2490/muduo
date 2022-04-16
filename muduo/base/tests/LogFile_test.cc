@@ -2,6 +2,7 @@
 #include <muduo/base/Logging.h>
 
 #include <unistd.h>
+#include <libgen.h>
 
 std::unique_ptr<muduo::LogFile> g_logFile;
 
