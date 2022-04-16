@@ -89,7 +89,7 @@ EventLoop::~EventLoop()
             << " destructs in thread " << CurrentThread::tid();
   wakeupChannel_->disableAll();
   wakeupChannel_->remove();
-  ::close(wakeupFd_);
+  ::close(wakeupFd_[0]);
   t_loopInThisThread = NULL;
 }
 
@@ -227,7 +227,7 @@ void EventLoop::abortNotInLoopThread()
 void EventLoop::wakeup()
 {
   uint64_t one = 1;
-  ssize_t n = sockets::write(wakeupFd_, &one, sizeof one);
+  ssize_t n = sockets::write(wakeupFd_[0], &one, sizeof one);
   if (n != sizeof one)
   {
     LOG_ERROR << "EventLoop::wakeup() writes " << n << " bytes instead of 8";
@@ -237,7 +237,7 @@ void EventLoop::wakeup()
 void EventLoop::handleRead()
 {
   uint64_t one = 1;
-  ssize_t n = sockets::read(wakeupFd_, &one, sizeof one);
+  ssize_t n = sockets::read(wakeupFd_[0], &one, sizeof one);
   if (n != sizeof one)
   {
     LOG_ERROR << "EventLoop::handleRead() reads " << n << " bytes instead of 8";
