@@ -48,6 +48,8 @@ class TimerQueue : noncopyable
                    double interval);
 
   void cancel(TimerId timerId);
+  int getTimeout() const;
+  void processTimers();
 
  private:
 
@@ -61,8 +63,7 @@ class TimerQueue : noncopyable
 
   void addTimerInLoop(Timer* timer);
   void cancelInLoop(TimerId timerId);
-  // called when timerfd alarms
-  void handleRead();
+
   // move out all expired timers
   std::vector<Entry> getExpired(Timestamp now);
   void reset(const std::vector<Entry>& expired, Timestamp now);
@@ -70,9 +71,6 @@ class TimerQueue : noncopyable
   bool insert(Timer* timer);
 
   EventLoop* loop_;
-  const int timerfd_;
-  Channel timerfdChannel_;
-  // Timer list sorted by expiration
   TimerList timers_;
 
   // for cancel()

@@ -90,6 +90,7 @@ EventLoop::~EventLoop()
   wakeupChannel_->disableAll();
   wakeupChannel_->remove();
   ::close(wakeupFd_[0]);
+  ::close(wakeupFd_[1]);
   t_loopInThisThread = NULL;
 }
 
@@ -104,12 +105,13 @@ void EventLoop::loop()
   while (!quit_)
   {
     activeChannels_.clear();
-    pollReturnTime_ = poller_->poll(kPollTimeMs, &activeChannels_);
+    pollReturnTime_ = poller_->poll(timerQueue_->getTimeout(), &activeChannels_);
     ++iteration_;
     if (Logger::logLevel() <= Logger::TRACE)
     {
       printActiveChannels();
     }
+    timerQueue_->processTimers();
     // TODO sort channel by priority
     eventHandling_ = true;
     for (Channel* channel : activeChannels_)
@@ -227,7 +229,7 @@ void EventLoop::abortNotInLoopThread()
 void EventLoop::wakeup()
 {
   uint64_t one = 1;
-  ssize_t n = sockets::write(wakeupFd_[0], &one, sizeof one);
+  ssize_t n = sockets::write(wakeupFd_[1], &one, sizeof one);
   if (n != sizeof one)
   {
     LOG_ERROR << "EventLoop::wakeup() writes " << n << " bytes instead of 8";

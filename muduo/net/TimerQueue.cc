@@ -17,7 +17,7 @@
 #include <muduo/net/Timer.h>
 #include <muduo/net/TimerId.h>
 
-#include <sys/timerfd.h>
+
 #include <unistd.h>
 
 namespace muduo
@@ -27,57 +27,18 @@ namespace net
 namespace detail
 {
 
-int createTimerfd()
-{
-  int timerfd = ::timerfd_create(CLOCK_MONOTONIC,
-                                 TFD_NONBLOCK | TFD_CLOEXEC);
-  if (timerfd < 0)
-  {
-    LOG_SYSFATAL << "Failed in timerfd_create";
-  }
-  return timerfd;
-}
 
-struct timespec howMuchTimeFromNow(Timestamp when)
+
+int howMuchTimeFromNow(Timestamp when)
 {
   int64_t microseconds = when.microSecondsSinceEpoch()
                          - Timestamp::now().microSecondsSinceEpoch();
-  if (microseconds < 100)
-  {
-    microseconds = 100;
-  }
-  struct timespec ts;
-  ts.tv_sec = static_cast<time_t>(
-      microseconds / Timestamp::kMicroSecondsPerSecond);
-  ts.tv_nsec = static_cast<long>(
-      (microseconds % Timestamp::kMicroSecondsPerSecond) * 1000);
-  return ts;
-}
 
-void readTimerfd(int timerfd, Timestamp now)
-{
-  uint64_t howmany;
-  ssize_t n = ::read(timerfd, &howmany, sizeof howmany);
-  LOG_TRACE << "TimerQueue::handleRead() " << howmany << " at " << now.toString();
-  if (n != sizeof howmany)
+  if (microseconds < 1000)
   {
-    LOG_ERROR << "TimerQueue::handleRead() reads " << n << " bytes instead of 8";
+    microseconds = 1000;
   }
-}
-
-void resetTimerfd(int timerfd, Timestamp expiration)
-{
-  // wake up loop by timerfd_settime()
-  struct itimerspec newValue;
-  struct itimerspec oldValue;
-  memZero(&newValue, sizeof newValue);
-  memZero(&oldValue, sizeof oldValue);
-  newValue.it_value = howMuchTimeFromNow(expiration);
-  int ret = ::timerfd_settime(timerfd, 0, &newValue, &oldValue);
-  if (ret)
-  {
-    LOG_SYSERR << "timerfd_settime()";
-  }
+  return static_cast<int>(microseconds / 1000);
 }
 
 }  // namespace detail
@@ -90,22 +51,15 @@ using namespace muduo::net::detail;
 
 TimerQueue::TimerQueue(EventLoop* loop)
   : loop_(loop),
-    timerfd_(createTimerfd()),
-    timerfdChannel_(loop, timerfd_),
     timers_(),
     callingExpiredTimers_(false)
 {
-  timerfdChannel_.setReadCallback(
-      std::bind(&TimerQueue::handleRead, this));
-  // we are always reading the timerfd, we disarm it with timerfd_settime.
-  timerfdChannel_.enableReading();
+
 }
 
 TimerQueue::~TimerQueue()
 {
-  timerfdChannel_.disableAll();
-  timerfdChannel_.remove();
-  ::close(timerfd_);
+
   // do not remove channel, since we're in EventLoop::dtor();
   for (const Entry& timer : timers_)
   {
@@ -133,10 +87,16 @@ void TimerQueue::addTimerInLoop(Timer* timer)
 {
   loop_->assertInLoopThread();
   bool earliestChanged = insert(timer);
-
-  if (earliestChanged)
+  insert(timer);
+}
+int TimerQueue::getTimeout() const
+{
+  loop_->assertInLoopThread();
+  if (timers_.empty())
   {
-    resetTimerfd(timerfd_, timer->expiration());
+    return 10000;
+  } else {
+    return howMuchTimeFromNow(timers_.begin()->second->expiration());
   }
 }
 
@@ -160,11 +120,10 @@ void TimerQueue::cancelInLoop(TimerId timerId)
   assert(timers_.size() == activeTimers_.size());
 }
 
-void TimerQueue::handleRead()
+void TimerQueue::processTimers()
 {
   loop_->assertInLoopThread();
   Timestamp now(Timestamp::now());
-  readTimerfd(timerfd_, now);
 
   std::vector<Entry> expired = getExpired(now);
 
@@ -226,10 +185,6 @@ void TimerQueue::reset(const std::vector<Entry>& expired, Timestamp now)
     nextExpire = timers_.begin()->second->expiration();
   }
 
-  if (nextExpire.valid())
-  {
-    resetTimerfd(timerfd_, nextExpire);
-  }
 }
 
 bool TimerQueue::insert(Timer* timer)
